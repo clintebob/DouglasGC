@@ -1,326 +1,40 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>🏌️ Golf Leaderboard Viewer</title>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --primary-color: #0b3d91;
-      --accent-color: #4fd1c5;
-      --bg-gradient: linear-gradient(to right, #1a1a2e, #16213e);
-      --light-text: #eee;
-      --table-header: #0f3460;
-      --hover-bg: #f0f8ff;
-      --highlight: #e6fffa;
-      --delta-positive: #38a169;
-      --delta-negative: #e53e3e;
-    }
+function renderTable(headers, dataRows) {
+  const tableContainer = document.getElementById('table-container');
+  const table = document.createElement('table');
+  table.setAttribute('id', 'csvTable');
 
-    body {
-      margin: 0;
-      font-family: 'Montserrat', sans-serif;
-      background: var(--bg-gradient);
-      color: var(--light-text);
-      min-height: 100vh;
-    }
+  const headerRow = document.createElement('tr');
+  headers.forEach((header, colIndex) => {
+    if (colIndex === 0) return; // Hide the first column
+    const th = document.createElement('th');
+    th.textContent = header;
+    th.addEventListener('click', () => sortByColumn(colIndex));
+    headerRow.appendChild(th);
+  });
+  table.appendChild(headerRow);
 
-    header {
-      background: #0b3d91;
-      padding: 1.5rem;
-      text-align: center;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.4);
-    }
+  const filtered = applyFilters(dataRows);
+  filtered.forEach((row, index) => {
+    const tr = document.createElement('tr');
+    if (index === 0) tr.classList.add('top-player');
 
-    header h1 {
-      margin: 0;
-      font-size: 2.2rem;
-      font-weight: 600;
-      color: white;
-    }
+    row.forEach((cell, colIndex) => {
+      if (colIndex === 0) return; // Skip first column
+      const td = document.createElement('td');
+      td.textContent = cell;
 
-    footer {
-      background: #0b3d91;
-      text-align: center;
-      padding: 1rem;
-      font-size: 0.95rem;
-      color: #ddd;
-      box-shadow: 0 -2px 10px rgba(0,0,0,0.4);
-    }
+      // Highlight delta columns
+      if (!isNaN(cell) && headers[colIndex].toLowerCase().includes('delta')) {
+        const val = parseFloat(cell);
+        if (val > 0) td.classList.add('delta-up');
+        else if (val < 0) td.classList.add('delta-down');
+      }
 
-    .controls, .buttons {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 1rem;
-      margin: 2rem auto 1rem;
-      padding: 0 1rem;
-    }
+      tr.appendChild(td);
+    });
+    table.appendChild(tr);
+  });
 
-    .controls input[type="text"] {
-      padding: 0.6rem;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      width: 260px;
-      font-size: 1rem;
-    }
-
-    .controls label {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 1rem;
-      font-weight: 500;
-    }
-
-    .buttons button {
-      background-color: var(--accent-color);
-      color: #000;
-      border: none;
-      padding: 0.75rem 1.25rem;
-      font-size: 1rem;
-      border-radius: 8px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-    }
-
-    .buttons button:hover {
-      background-color: #38b2ac;
-    }
-
-    .loading-spinner {
-      border: 4px solid rgba(255, 255, 255, 0.3);
-      border-top: 4px solid #4fd1c5;
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      animation: spin 1s linear infinite;
-      margin: 2rem auto;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    table {
-      width: 90%;
-      margin: 2rem auto;
-      border-collapse: collapse;
-      background: white;
-      color: #333;
-      border-radius: 10px;
-      overflow: hidden;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-    }
-
-    $1
-  &:first-child {
-    display: none;
-  }
+  tableContainer.innerHTML = '';
+  tableContainer.appendChild(table);
 }
-
-    th {
-      background-color: var(--table-header);
-      color: white;
-      cursor: pointer;
-      font-weight: 600;
-    }
-
-    th.sort-asc::after {
-      content: " \25B2";
-    }
-
-    th.sort-desc::after {
-      content: " \25BC";
-    }
-
-    tr:hover {
-      background-color: var(--hover-bg);
-    }
-
-    tr.top-player {
-      background-color: var(--highlight) !important;
-      font-weight: bold;
-    }
-
-    td.delta-up {
-      color: var(--delta-positive);
-    }
-
-    td.delta-down {
-      color: var(--delta-negative);
-    }
-  </style>
-</head>
-<body>
-  <header>
-    <h1>🏌️‍♂️ Golf Tournament Leaderboard Viewer</h1>
-  </header>
-
-  <div class="buttons" id="button-container">Loading rounds...</div>
-
-  $1
-    <label>
-      <input type="checkbox" id="null-toggle" checked /> Hide "Null" entries
-    </label>
-    <label>
-      <input type="checkbox" id="star-toggle" checked /> Hide rows with "*"
-    </label>
-  </div>
-
-  <div id="table-container">
-    <div class="loading-spinner" id="loader"></div>
-  </div>
-
-  <footer>
-    © 2025 El Banditos. All rights reserved.
-  </footer>
-
-  <script>
-    let currentSortColumn = null;
-    let currentSortDirection = 'asc';
-    let rawDataRows = [];
-
-    async function fetchFileList() {
-      try {
-        const response = await fetch('files.json');
-        const fileList = await response.json();
-        createButtons(fileList);
-      } catch (err) {
-        document.getElementById('button-container').innerHTML = '<p style="color: red;">❌ Unable to load round data</p>';
-        console.error(err);
-      }
-    }
-
-    function createButtons(files) {
-      const container = document.getElementById('button-container');
-      container.innerHTML = '';
-      files.forEach(file => {
-        const btn = document.createElement('button');
-        btn.textContent = file.replace('.csv', '');
-        btn.onclick = () => loadCSV(file);
-        container.appendChild(btn);
-      });
-    }
-
-    async function loadCSV(fileName) {
-      const tableContainer = document.getElementById('table-container');
-      const filterContainer = document.getElementById('filter-container');
-      document.getElementById('loader').style.display = 'block';
-      try {
-        const response = await fetch(fileName);
-        const text = await response.text();
-        const rows = text.trim().split('\n').map(r => r.split(','));
-
-        const headers = rows[0];
-        rawDataRows = rows.slice(1);
-        renderTable(headers, rawDataRows);
-
-        filterContainer.style.display = 'flex';
-        document.getElementById('filterInput').value = '';
-        document.getElementById('filterInput').oninput = filterTable;
-        document.getElementById('noscore-toggle').onchange = filterTable;
-
-        currentSortColumn = null;
-      } catch (err) {
-        tableContainer.innerHTML = `<p style="color: red;">❌ ${err.message}</p>`;
-        filterContainer.style.display = 'none';
-      } finally {
-        document.getElementById('loader').style.display = 'none';
-      }
-    }
-
-    function renderTable(headers, dataRows) {
-      const tableContainer = document.getElementById('table-container');
-      const table = document.createElement('table');
-      table.setAttribute('id', 'csvTable');
-
-      const headerRow = document.createElement('tr');
-      headers.forEach((header, colIndex) => {
-        if (colIndex === 0) return;
-        th.textContent = header;
-        th.addEventListener('click', () => sortByColumn(colIndex));
-        headerRow.appendChild(th);
-      });
-      table.appendChild(headerRow);
-
-      const filtered = applyFilters(dataRows);
-      filtered.forEach((row, index) => {
-        const tr = document.createElement('tr');
-        if (index === 0) tr.classList.add('top-player');
-
-        row.forEach((cell, colIndex) => {
-          if (colIndex === 0) return;
-          td.textContent = cell;
-
-          // Apply delta color logic (assumes score change or par-related column)
-          if (!isNaN(cell) && headers[colIndex].toLowerCase().includes('delta')) {
-            const val = parseFloat(cell);
-            if (val > 0) td.classList.add('delta-up');
-            else if (val < 0) td.classList.add('delta-down');
-          }
-
-          tr.appendChild(td);
-        });
-        table.appendChild(tr);
-      });
-
-      tableContainer.innerHTML = '';
-      tableContainer.appendChild(table);
-    }
-
-    function applyFilters(rows) {
-      const hideNoScore = document.getElementById('noscore-toggle').checked;
-      const hideNull = document.getElementById('null-toggle').checked;
-      const hideStar = document.getElementById('star-toggle').checked;
-      const globalFilter = document.getElementById('filterInput').value.toLowerCase();
-
-      return rows.filter(row => {
-        // Filter out rows with NoScore, Null, or *
-        const rowText = row.join(' ').toLowerCase();
-        if (hideNoScore && rowText.includes("noscore")) return false;
-        if (hideNull && row.some(cell => cell.toLowerCase() === 'null')) return false;
-        if (hideStar && row.some(cell => cell.includes('*'))) return false;
-        if (globalFilter && !rowText.includes(globalFilter)) return false;
-                if (row.some(cell => cell.toLowerCase() === 'null' || cell.includes('*'))) return false;
-        return true;
-      });
-    }
-
-    function sortByColumn(colIndex) {
-      const table = document.getElementById('csvTable');
-      const headerCells = table.querySelectorAll('tr:first-child th');
-      headerCells.forEach(th => th.classList.remove('sort-asc', 'sort-desc'));
-
-      const direction = currentSortColumn === colIndex && currentSortDirection === 'asc' ? 'desc' : 'asc';
-      currentSortColumn = colIndex;
-      currentSortDirection = direction;
-
-      headerCells[colIndex].classList.add(direction === 'asc' ? 'sort-asc' : 'sort-desc');
-
-      rawDataRows.sort((a, b) => {
-        const aVal = isNaN(a[colIndex]) ? a[colIndex].toLowerCase() : parseFloat(a[colIndex]);
-        const bVal = isNaN(b[colIndex]) ? b[colIndex].toLowerCase() : parseFloat(b[colIndex]);
-
-        if (aVal < bVal) return direction === 'asc' ? -1 : 1;
-        if (aVal > bVal) return direction === 'asc' ? 1 : -1;
-        return 0;
-      });
-
-      renderTable(Array.from(document.querySelectorAll('th')).map(th => th.textContent), rawDataRows);
-    }
-
-    function filterTable() {
-      renderTable(
-        Array.from(document.querySelectorAll('th')).map(th => th.textContent),
-        rawDataRows
-      );
-    }
-
-    fetchFileList();
-  </script>
-</body>
-</html>
