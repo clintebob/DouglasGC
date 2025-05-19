@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>CSV Viewer with Sorting and Filters</title>
+  <title>CSV Viewer with Column Filters</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -42,18 +42,6 @@
     th {
       background-color: #333;
       color: white;
-      cursor: pointer;
-      position: relative;
-    }
-    th.sort-asc::after {
-      content: " 🔼";
-      position: absolute;
-      right: 10px;
-    }
-    th.sort-desc::after {
-      content: " 🔽";
-      position: absolute;
-      right: 10px;
     }
     th input {
       width: 90%;
@@ -74,9 +62,6 @@
   <div id="table-container">Select a date to view data.</div>
 
   <script>
-    let currentSortColumn = null;
-    let currentSortDirection = 'asc';
-
     async function fetchFileList() {
       try {
         const response = await fetch('files.json');
@@ -105,7 +90,7 @@
       const filterContainer = document.getElementById('filter-container');
 
       try {
-        const url = fileName;
+        const url = fileName; // ✅ Relative path to fix loading issue
         console.log("Fetching CSV from:", url);
 
         const response = await fetch(url);
@@ -122,8 +107,6 @@
         rows[0].forEach((header, colIndex) => {
           const th = document.createElement('th');
           th.textContent = header;
-          th.addEventListener('click', () => sortByColumn(colIndex));
-          th.dataset.col = colIndex;
           headerRow.appendChild(th);
 
           const filterTh = document.createElement('th');
@@ -153,46 +136,15 @@
         tableContainer.appendChild(table);
         filterContainer.style.display = 'block';
 
-        // Reset global filter
+        // Reset and bind global filter
         document.getElementById('filterInput').value = '';
         document.getElementById('filterInput').oninput = filterTable;
 
-        currentSortColumn = null; // Reset sort state
       } catch (err) {
         tableContainer.innerHTML = `<p style="color: red;">❌ ${err.message}</p>`;
         filterContainer.style.display = 'none';
         console.error(err);
       }
-    }
-
-    function sortByColumn(colIndex) {
-      const table = document.getElementById('csvTable');
-      const rows = Array.from(table.querySelectorAll('tr')).slice(2); // Skip headers
-
-      const headerCells = table.querySelectorAll('tr:first-child th');
-      headerCells.forEach(th => th.classList.remove('sort-asc', 'sort-desc'));
-
-      const direction = currentSortColumn === colIndex && currentSortDirection === 'asc' ? 'desc' : 'asc';
-      currentSortColumn = colIndex;
-      currentSortDirection = direction;
-
-      headerCells[colIndex].classList.add(direction === 'asc' ? 'sort-asc' : 'sort-desc');
-
-      rows.sort((a, b) => {
-        const aText = a.children[colIndex].textContent.trim();
-        const bText = b.children[colIndex].textContent.trim();
-
-        const aVal = isNaN(aText) ? aText.toLowerCase() : parseFloat(aText);
-        const bVal = isNaN(bText) ? bText.toLowerCase() : parseFloat(bText);
-
-        if (aVal < bVal) return direction === 'asc' ? -1 : 1;
-        if (aVal > bVal) return direction === 'asc' ? 1 : -1;
-        return 0;
-      });
-
-      const tbody = document.createElement('tbody');
-      rows.forEach(row => tbody.appendChild(row));
-      table.appendChild(tbody);
     }
 
     function filterByColumn() {
