@@ -116,11 +116,11 @@
       box-shadow: 0 10px 25px rgba(0,0,0,0.2);
     }
 
-    th, td {
-      padding: 1rem;
-      border-bottom: 1px solid #e2e8f0;
-      text-align: left;
-    }
+    $1
+  &:first-child {
+    display: none;
+  }
+}
 
     th {
       background-color: var(--table-header);
@@ -162,10 +162,12 @@
 
   <div class="buttons" id="button-container">Loading rounds...</div>
 
-  <div class="controls" id="filter-container" style="display:none;">
-    <input type="text" id="filterInput" placeholder="Search players, scores..." />
+  $1
     <label>
-      <input type="checkbox" id="noscore-toggle" checked /> Hide "NoScore" entries
+      <input type="checkbox" id="null-toggle" checked /> Hide "Null" entries
+    </label>
+    <label>
+      <input type="checkbox" id="star-toggle" checked /> Hide rows with "*"
     </label>
   </div>
 
@@ -238,7 +240,7 @@
 
       const headerRow = document.createElement('tr');
       headers.forEach((header, colIndex) => {
-        const th = document.createElement('th');
+        if (colIndex === 0) return;
         th.textContent = header;
         th.addEventListener('click', () => sortByColumn(colIndex));
         headerRow.appendChild(th);
@@ -251,7 +253,7 @@
         if (index === 0) tr.classList.add('top-player');
 
         row.forEach((cell, colIndex) => {
-          const td = document.createElement('td');
+          if (colIndex === 0) return;
           td.textContent = cell;
 
           // Apply delta color logic (assumes score change or par-related column)
@@ -272,12 +274,18 @@
 
     function applyFilters(rows) {
       const hideNoScore = document.getElementById('noscore-toggle').checked;
+      const hideNull = document.getElementById('null-toggle').checked;
+      const hideStar = document.getElementById('star-toggle').checked;
       const globalFilter = document.getElementById('filterInput').value.toLowerCase();
 
       return rows.filter(row => {
+        // Filter out rows with NoScore, Null, or *
         const rowText = row.join(' ').toLowerCase();
         if (hideNoScore && rowText.includes("noscore")) return false;
+        if (hideNull && row.some(cell => cell.toLowerCase() === 'null')) return false;
+        if (hideStar && row.some(cell => cell.includes('*'))) return false;
         if (globalFilter && !rowText.includes(globalFilter)) return false;
+                if (row.some(cell => cell.toLowerCase() === 'null' || cell.includes('*'))) return false;
         return true;
       });
     }
