@@ -259,6 +259,13 @@
       renderTable(Array.from(document.querySelectorAll('th')).map(th => th.textContent), rawDataRows);
     }
 
+    function filterTable() {
+      renderTable(
+        Array.from(document.querySelectorAll('th')).map(th => th.textContent),
+        rawDataRows
+      );
+    }
+
     fetchFileList();
   </script>
 </body>
