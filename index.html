@@ -85,13 +85,17 @@
       });
     }
 
-    async function loadCSV(fileName) {
-      const tableContainer = document.getElementById('table-container');
-      const filterContainer = document.getElementById('filter-container');
+async function loadCSV(fileName) {
+  const tableContainer = document.getElementById('table-container');
+  const filterContainer = document.getElementById('filter-container');
 
-      try {
-        const url = `https://clintebob.github.io/DouglasGC/${fileName}`;
-        console.log("Fetching CSV from:", url);
+  try {
+    const url = fileName;  // Fetch relative to current directory
+    console.log("Fetching CSV from:", url);
+
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Failed to load CSV file: ${response.status} ${response.statusText}`);
+    const text = await response.text();
 
         const response = await fetch(url);
         if (!response.ok) throw new Error(`Failed to load CSV file: ${response.status} ${response.statusText}`);
