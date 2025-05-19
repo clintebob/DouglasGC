@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>CSV Viewer with Column Filters</title>
+  <title>CSV Viewer with Sorting</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -42,10 +42,18 @@
     th {
       background-color: #333;
       color: white;
+      cursor: pointer;
+      position: relative;
     }
-    th input {
-      width: 90%;
-      margin-top: 0.5rem;
+    th.sort-asc::after {
+      content: " 🔼";
+      position: absolute;
+      right: 10px;
+    }
+    th.sort-desc::after {
+      content: " 🔽";
+      position: absolute;
+      right: 10px;
     }
   </style>
 </head>
@@ -62,6 +70,9 @@
   <div id="table-container">Select a date to view data.</div>
 
   <script>
+    let currentSortColumn = null;
+    let currentSortDirection = 'asc';
+
     async function fetchFileList() {
       try {
         const response = await fetch('files.json');
@@ -90,7 +101,7 @@
       const filterContainer = document.getElementById('filter-container');
 
       try {
-        const url = fileName; // ✅ Relative path to fix loading issue
+        const url = fileName;
         console.log("Fetching CSV from:", url);
 
         const response = await fetch(url);
@@ -102,25 +113,14 @@
         table.setAttribute('id', 'csvTable');
 
         const headerRow = document.createElement('tr');
-        const filterRow = document.createElement('tr');
-
         rows[0].forEach((header, colIndex) => {
           const th = document.createElement('th');
           th.textContent = header;
+          th.addEventListener('click', () => sortByColumn(colIndex));
           headerRow.appendChild(th);
-
-          const filterTh = document.createElement('th');
-          const input = document.createElement('input');
-          input.type = 'text';
-          input.placeholder = 'Filter';
-          input.dataset.col = colIndex;
-          input.oninput = filterByColumn;
-          filterTh.appendChild(input);
-          filterRow.appendChild(filterTh);
         });
 
         table.appendChild(headerRow);
-        table.appendChild(filterRow);
 
         rows.slice(1).forEach(row => {
           const tr = document.createElement('tr');
@@ -136,10 +136,10 @@
         tableContainer.appendChild(table);
         filterContainer.style.display = 'block';
 
-        // Reset and bind global filter
         document.getElementById('filterInput').value = '';
         document.getElementById('filterInput').oninput = filterTable;
 
+        currentSortColumn = null; // Reset sort
       } catch (err) {
         tableContainer.innerHTML = `<p style="color: red;">❌ ${err.message}</p>`;
         filterContainer.style.display = 'none';
@@ -147,30 +147,40 @@
       }
     }
 
-    function filterByColumn() {
-      const inputs = document.querySelectorAll('#csvTable tr:nth-child(2) input');
-      const rows = document.querySelectorAll('#csvTable tr:nth-child(n+3)');
+    function sortByColumn(colIndex) {
+      const table = document.getElementById('csvTable');
+      const rows = Array.from(table.querySelectorAll('tr')).slice(1); // Skip header
 
-      rows.forEach(row => {
-        const cells = row.querySelectorAll('td');
-        let visible = true;
+      const headerCells = table.querySelectorAll('tr:first-child th');
+      headerCells.forEach(th => th.classList.remove('sort-asc', 'sort-desc'));
 
-        inputs.forEach((input, colIndex) => {
-          const filter = input.value.toLowerCase();
-          const cellText = cells[colIndex].textContent.toLowerCase();
-          if (!cellText.includes(filter)) {
-            visible = false;
-          }
-        });
+      const direction = currentSortColumn === colIndex && currentSortDirection === 'asc' ? 'desc' : 'asc';
+      currentSortColumn = colIndex;
+      currentSortDirection = direction;
 
-        row.style.display = visible ? '' : 'none';
+      headerCells[colIndex].classList.add(direction === 'asc' ? 'sort-asc' : 'sort-desc');
+
+      rows.sort((a, b) => {
+        const aText = a.children[colIndex].textContent.trim();
+        const bText = b.children[colIndex].textContent.trim();
+
+        const aVal = isNaN(aText) ? aText.toLowerCase() : parseFloat(aText);
+        const bVal = isNaN(bText) ? bText.toLowerCase() : parseFloat(bText);
+
+        if (aVal < bVal) return direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return direction === 'asc' ? 1 : -1;
+        return 0;
       });
+
+      const tbody = document.createElement('tbody');
+      rows.forEach(row => tbody.appendChild(row));
+      table.appendChild(tbody);
     }
 
     function filterTable() {
       const input = document.getElementById('filterInput');
       const filter = input.value.toLowerCase();
-      const rows = document.querySelectorAll('#csvTable tr:nth-child(n+3)');
+      const rows = document.querySelectorAll('#csvTable tr:not(:first-child)');
 
       rows.forEach(row => {
         const cells = row.querySelectorAll('td');
