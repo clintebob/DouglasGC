@@ -236,7 +236,7 @@ tableHeaders = headers;
 
       const headerRow = document.createElement('tr');
       headers.forEach((header, colIndex) => {
-        if (colIndex === 0) return;
+        // colIndex 0 is no longer skipped
         const th = document.createElement('th');
         th.textContent = header;
         th.addEventListener('click', () => sortByColumn(colIndex));
@@ -250,7 +250,7 @@ tableHeaders = headers;
         if (index === 0) tr.classList.add('top-player');
 
         row.forEach((cell, colIndex) => {
-          if (colIndex === 0) return;
+          // colIndex 0 is no longer skipped
           const td = document.createElement('td');
           td.textContent = cell;
 
