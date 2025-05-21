@@ -174,7 +174,6 @@
   <script>
     let currentSortColumn = null;
     let currentSortDirection = 'asc';
-let tableHeaders = [];
     let rawDataRows = [];
 
     async function fetchFileList() {
@@ -209,7 +208,6 @@ let tableHeaders = [];
         const rows = text.trim().split('\n').map(r => r.split(','));
 
         const headers = rows[0];
-tableHeaders = headers;
         rawDataRows = rows.slice(1);
         renderTable(headers, rawDataRows);
 
@@ -306,14 +304,14 @@ tableHeaders = headers;
       });
 
       renderTable(
-        tableHeaders,
+        Array.from(document.querySelectorAll('th')).map(th => th.textContent),
         rawDataRows
       );
     }
 
     function filterTable() {
       renderTable(
-        tableHeaders,
+        Array.from(document.querySelectorAll('th')).map(th => th.textContent),
         rawDataRows
       );
     }
